@@ -1,6 +1,11 @@
 #%%
 import numpy as np
 from numpy.polynomial.polynomial import Polynomial as Poly
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+
+
 #https://repository.upenn.edu/cgi/viewcontent.cgi?article=1000&context=scn_tooldata
 s1805 = [[500 , 1.287],
         [1000, 0.914],
@@ -23,8 +28,7 @@ def spin_asymptote(x,a,b,c,d):
 
 # %%
 s1805_fit=Poly.fit(s1805['Speed'], s1805['Thickness'],2)
-import plotly.graph_objects as go
-import plotly.express as px
+
 
 x=np.linspace(500,6000)
 y=s1805_fit(x)
