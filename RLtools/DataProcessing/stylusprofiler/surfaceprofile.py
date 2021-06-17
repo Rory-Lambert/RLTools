@@ -4,12 +4,13 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 import plotly.graph_objects as go
-from PIL import Image
 from pathlib import Path
 import os 
 from RLtools.Math.FilteringAndDerviation import savitzky_golay
 from plotly.subplots import make_subplots
 from RLtools.Utilities.plotlyfuncs import make_transparent, draw_axes
+from RLtools.Utilities.file_io import read_files_to_dict
+import warnings
 
 sharepoint = os.path.join(os.path.expanduser('~'), 'CST Global Ltd')
 integration_drive = os.path.join(sharepoint, 'Integration - Documents')
@@ -22,33 +23,44 @@ class SurfaceProfile(object):
     def __init__(self, path=None, name='Untitled trace', x_offset=0, y_offset=0):
         super(SurfaceProfile, self).__init__()
         
-        
-        if path:
-            #get the metadata
-            df=pd.read_csv(path, encoding='cp1252', nrows=13)
-            df.columns=['Parameter','Value']
-            df=df.set_index('Parameter')
-            for row, value in df.iterrows(): 
-                #print(row, value)
-                try:
-                    setattr(self, row, float(value.values[0]))
-                except ValueError:
-                    setattr(self, row, value.values[0])
+        self.name = name
 
-            self.x_resolution = self.Sclen/self.NumPts
-            self.name = name
-        
-            #get the tracedata
-            df=pd.read_csv(path, encoding='cp1252', skiprows=39)
-            
+        if path:
             try:
-                self.y=(df.index.values/1e4) 
-                self.x=np.array([n*self.x_resolution for n, v in enumerate(self.y)])
-            except TypeError:
-                raise TypeError(f'There is a problem processing file {path}, are you sure there arent two scans in this file?')
+                #get the metadata
+                df=pd.read_csv(path, encoding='cp1252', nrows=13)
+                df.columns=['Parameter','Value']
+                df=df.set_index('Parameter')
+                for row, value in df.iterrows(): 
+                    #print(row, value)
+                    try:
+                        setattr(self, row, float(value.values[0]))
+                    except ValueError:
+                        setattr(self, row, value.values[0])
+
+                self.x_resolution = self.Sclen/self.NumPts
+                
+            
+                #get the tracedata
+                df=pd.read_csv(path, encoding='cp1252', skiprows=39)
+                
+                #create an x axis and scale the y axis
+                try:
+                    self.y=(df.index.values/1e4) 
+                    self.x=np.array([n*self.x_resolution for n, v in enumerate(self.y)])
+                except TypeError:
+                    raise TypeError(f'There is a problem processing file {path}, are you sure there arent two scans in this file?')
+            
+            # If the normal read method fails, have a go at reading it as though its a Dektak XT file
+            except:
+                print('Failed normal read. Trying dektakt XT import')
+                df=pd.read_csv(path, skiprows=22)
+                
+                df.columns = ['x','y','foo','bar']
+                self.y = df['y']
+                self.x = df['x']*1e3
 
             self.align(x_offset, y_offset)
-
     
     def __repr__(self):
         return f'SurfaceProfile "{self.name}" with length {self.Sclen}um'
@@ -204,6 +216,12 @@ def align_pre_post_deriv(pre,post, alignments):
     Returns:
         [go.Figure]
     """    
+    
+    warnings.warn(
+        "align_pre_post_deriv is deprecated, the functionality should be entirely reproduced in generate_report()",
+        DeprecationWarning
+    )
+    """
     smoothing=5 
     derivorder =1 
     
@@ -215,24 +233,92 @@ def align_pre_post_deriv(pre,post, alignments):
     f = make_transparent(f)
     f=draw_axes(f)
     return f
+    """
+# %%
+def generate_report(dir, query, ref=0, alignments=np.zeros((100,2)), 
+                    axis_range = [0,10000], title=None, derivative_index=None, etch_depth=None):
+    """Searches though a directory to find dektak traces and loads them into a dict
+       The traces are aligned using an (nx2) alignments array, which can be defined by the user
+       The height of each trace is measured at the reference position, and used to generate the report
+
+    Args:
+        dir (str, Path-like): The parent directory in which to begin the file search
+        query (str (regex?): The query defining the criterea for file selection
+        ref (int, optional): Reference location along the scan (x). Defaults to 0. This defines where heights are measured
+        alignments ([np.array], optional): The alignments to be used to offset the files in [x,y].
+                                           There should be at least one row per file. Defaults to np.zeros((100,2)).
+        axis_range ([float, float], optional): The x range over which to plot the output. Defaults to [0,10000].
+        title (str, optional): Title of the dataset. Used for plotting. Defaults to None.
+        derivative_index (int, optional): The index of the trace within a go.Figure object for which the derivative should be calculated. 
+        etch_depth (float, optional): The etch depth in um used to highlight the surface of the substrate using show_substrate()
 
 
-def report_etch_characteristics(pre, post, id, xxrange, etch_depth, verbose = True):
-    import pandas as pd
-    initial_resist = 8.741
+    Returns:
+        files ({filename(str):trace(SurfaceProfile)}): dict of the files used
+        f (plotly.Figure): graph of the traces
+        peaks(pd.DataFrame): measured heights for each of the traces
+    """                    
+    files = read_files_to_dict(dir, query, SurfaceProfile) 
 
-    pre_max_in_window = pre[id].data[pre[id].data['Scan Length (um)'].between(*xxrange)]['Profile (um)'].max()
+    f=blank_dektak_figure()
+
+
+    m_bounds = [ref-2, ref+2]   #averaging region for peak height measurement
+
+
+    #align the scans and plot
+    for d, alignment in zip(files.items(), alignments):
+        name, scan = d
+        scan.align(*alignment)
+        f.add_scatter(x=scan.x, y=scan.y, name=name.lower())
+        
+        #calulate the average height of this scan in the region defined by m_bounds
+        scan.peak = scan.get_area_average(m_bounds)
+        #draw m_bounds
+        f.add_vrect(*m_bounds, fillcolor='green',opacity=0.1, line_width=0)
+    
+
+    #optionally plot the derivative of one of the curves
+    if derivative_index:
+        trace = f.data[derivative_index]
+
+        deriv = savitzky_golay(trace['y'], window_size=5, order=2, deriv=1)
+        f.add_scatter(x=trace['x'], y=deriv, secondary_y=True, name='1st derivative')
+
+    #optionally plot the surface
+    if etch_depth:
+        f=show_substrate(f, etch_depth)
+
+    #figure formatting
+    f.update_xaxes(range=axis_range)
+    f = make_transparent(f)
+    f = draw_axes(f)
+    f.update_layout(title=title)
+
+    #package up the measured heights into a Series
+    peaks = {key: value.peak for key, value in files.items()}
+    peaks=pd.Series(peaks)
+    return files, f, peaks
+
+
+def report_etch_characteristics(report, reflow_ix, etch_ix, strip_ix,
+                                runtime, name='Untitled Summary',verbose = True):
+    
+    
+    pre_max_in_window = report[etch_ix]
+    etch_depth = report[strip_ix]
     remaining_resist = pre_max_in_window - etch_depth
-    remaining_resist
+    initial_resist = report[reflow_ix] - report[strip_ix]
     erosion = (initial_resist - remaining_resist)
-    erosion_rate = (erosion*1000)/10 
-    etch_rate = (etch_depth*1000)/10
+    erosion_rate = (erosion*1000)/runtime   #'um/min'
+    etch_rate = (etch_depth*1000)/runtime   #'um/min'
     sel = etch_rate/erosion_rate
     if verbose:
         print(f'Total depth after etching is {pre_max_in_window:.3f} um')
-        print(f'Calculated remaining resist as {remaining_resist:.2f}um, indicating an erosion of {erosion:.2f}um in 10 minutes of etching')
+        print(f'Intial resist measured as {initial_resist:.2f} um')
+        print(f'Calculated remaining resist as {remaining_resist:.2f}um, indicating an erosion of {erosion:.2f}um in {runtime} minutes of etching')
         print(f'This equates to an erosion rate of {erosion_rate:.0f} nm/min')
-        print(f'The etch depth of {etch_depth:.2f}um in 10 mins indicates an etch rate of {etch_rate}nm/min')
+        print(f'The etch depth of {etch_depth:.2f}um in {runtime} mins indicates an etch rate of {etch_rate:.0f}nm/min')
         print(f'The selectivity is therefore {sel:.2f}:1')
 
     rkeys = ['Initial resist (um)',
@@ -245,9 +331,9 @@ def report_etch_characteristics(pre, post, id, xxrange, etch_depth, verbose = Tr
 
     rvals =[initial_resist, pre_max_in_window, remaining_resist, etch_depth, etch_rate, erosion_rate, sel]
 
-    df = pd.DataFrame(pd.Series({key:val for key, val in zip(rkeys, rvals)}, name='Result'))
+    df = pd.DataFrame(pd.Series({key:val for key, val in zip(rkeys, rvals)}, name=name))
 
-    return df
+    return df.T
 
 
 def radius_of_curvature(f, smoothing=5):
@@ -268,3 +354,11 @@ def dektak_template(f):
     f.update_layout(template='plotly_dark', width=900, showlegend=False)
     f.update_traces(line=dict(color='white'))
     return f
+
+#%%
+if __name__ == "__main__":
+    path=Path(integration_drive, 'MLA2','UoG trials 2','_UOG2 TULIP RESULTS','Day 1', '0900 - Lotus Baseline - no etching - 33.csv')
+    f=SurfaceProfile(path)
+    #df=pd.read_csv(path, skiprows=22)
+    #df
+# %%

@@ -5,6 +5,7 @@
 		}
 	],
 	"settings": {
-		"jupyter.notebookFileRoot": "${workspaceFolder}"
+		"jupyter.notebookFileRoot": "${workspaceFolder}",
+		"jupyter.jupyterServerType": "local"
 	}
 }

@@ -56,8 +56,6 @@ class Spin(object):
         self.baketime = baketime
         self.baketemp = baketemp
 
-
-
     def __repr__(self):
         return f'Spin {self.resist} using program {self.program}, bake for {self.baketime}s at {self.baketemp}C'
 
@@ -133,88 +131,7 @@ class Module(object):
     def append(self, operation):
         self.processes += (operation,)
             
-        
-
-
-
-cladphoto = Photo('cladding', 250, 'S1813', 7, 12)        
-
-metalrie = DryEtch('cladding','ICP2','DFBHMASK')
-
-
-
-cladding = Module('Cladding',cladphoto, metalrie)
-
-"""
-Process flow
-
-	• Assume that the wafer has been patterned on the front side and thinned
-	• Dep Dielectric layer (SiN 240nm AR coat) 
-		○ PECVD2?
-		○ Metrology for SiN thickness?
-			§ Use a T/W
-	• Carrier bonding
-		○ Wax on hotplate
-		○ Water soluble
-	• Resist Coat
-		○ 1813? 
-			§ Selectivity to etch chemistry?
-	• Dielectric etch
-		○ Which tool? Likely the RIE
-		○ Look for standard dielectric etch recipe
-	• Polymer (resist) removal
-		○ Wet clean (SVC) +Dry etch
-	• Sputter
-		○ Ti 50 Au 250
-	• Photo for metal mask
-		○ 1805?
-	• Au etch (KI/I) 
-		○ How long?
-	• Ti etch (???)
-		Before or after resist strip?
-	• Just an ash? 
-	• Debond
-		○ Opticlear
-Acetone
-
-"""
-
-sin240 = Dielectric('SiN 240', 'PECVD1', None)
-bond = ProcessStep('Bond wafer','Carrier Bonding')
-
-photo = Photo('Pattern SiN', None, 'S1813', 'Unknown program',5, maskid='Unknown mask')
-
-
-sinetch = DryEtch('SiN Etch', 'RIE', 'Unknown')
-
-engrequest20 = Module('Engineering Request 20', sin240, bond, photo, sinetch)
-# %%
-
-
-type(cladphoto)
-# %%
-class PatternTransfer(Module):
-    """Deposit hardmask, spin resist, expose, develop, strip, photocd"""
-    def __init__(self, ID, oxide_tx, ):
-        
-        
-    
-        
-        
-        super(PatternTransfer, self).__init__(ID)
-        
-        
-        
-# %%
-class Ridge(Module):
-    """Pattern transfer, oxide etch, strip PR, InP etch, Acid clean ,wet etch, oxide strip"""
-    def __init__(self, ID, clad_mod=None):
-        
-        self.clad_mod = clad_mod
-        super(Ridge, self).__init__(ID)
-
-
 
 # %%
-clad1 = Module('Cladding1', Photo('cladphoto',250, 'S1813','7','12',None,'5').processes)
+
 # %%

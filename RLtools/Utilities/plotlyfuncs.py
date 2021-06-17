@@ -1,5 +1,6 @@
+#%%
 import math
-
+import plotly.graph_objects as go
 def make_transparent(f):
 
     f.update_layout(paper_bgcolor='rgba(0,0,0,0)',
@@ -12,7 +13,48 @@ def draw_axes(f):
     f.update_xaxes(**kwargs)
     f.update_yaxes(**kwargs)
     return f
-    
+
+def bottom_legend(f, **layoutkwargs):
+    f.update_layout(legend = dict(xanchor='center', x=0.5, orientation= 'h', **layoutkwargs))
+    return f
+
+
+def add_sivers_watermark(f):
+    f.update_layout(
+        images=[dict(
+            source="https://www.sivers-semiconductors.com/wp-content/themes/sivers/assets/img/logo_black.svg",
+            sizex=0.8, sizey=0.8,
+            x=0.5, y=0.5,
+            xanchor="center", yanchor="middle",
+            opacity=0.05
+        )])
+    return f
+
+
+
+def tulip_template(f):
+    """Template for plots used in the Tulip2 project. Has 1200x1200px, large text,
+       transparent background with Sivers watermark, black axes (including secondary y)
+       legend along the bottom of the figure.
+
+
+    Args:
+        f (go.Figure): the figure to modify
+
+    Returns:
+        [go.Figure]: the modified figure
+    """    
+    f.layout.width=1200
+    f.layout.height=1200
+    for func in [make_transparent, draw_axes, bottom_legend, add_sivers_watermark]:
+        f=func(f)
+    f.update_xaxes(showgrid=False)
+    f.update_yaxes(showgrid=False)
+    f.layout.font.size=28
+    return f
+
+#%%
+
 
 class CalculateTicks:
 

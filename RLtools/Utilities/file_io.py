@@ -25,9 +25,9 @@ def read_files_to_dict(path, ftype, func=None,**fkwargs):
         if not func:
             outfiles[get_fname(f)] = f
         if func:
-            try:
-                outfiles[get_fname(f)] = func(f, name = get_fname(f))
-            except TypeError:
-                outfiles[get_fname(f)] = func(f, **fkwargs)
+            #try:
+            #    outfiles[get_fname(f)] = func(f, name = get_fname(f))
+            #except TypeError:
+            outfiles[get_fname(f)] = func(f, **fkwargs)
 
     return outfiles
