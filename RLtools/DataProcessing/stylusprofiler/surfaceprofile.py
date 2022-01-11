@@ -14,7 +14,7 @@ import warnings
 
 sharepoint = os.path.join(os.path.expanduser('~'), 'CST Global Ltd')
 integration_drive = os.path.join(sharepoint, 'Integration - Documents')
-results_folder = os.path.join(integration_drive ,r'MLA2\HBr trials\Resist3')
+results_folder = os.path.join(integration_drive ,r'MLA2\HBr trials\UoG Trials 1\Resist3')
 
 #%%
 class SurfaceProfile(object):
@@ -357,8 +357,22 @@ def dektak_template(f):
 
 #%%
 if __name__ == "__main__":
-    path=Path(integration_drive, 'MLA2','UoG trials 2','_UOG2 TULIP RESULTS','Day 1', '0900 - Lotus Baseline - no etching - 33.csv')
-    f=SurfaceProfile(path)
-    #df=pd.read_csv(path, skiprows=22)
-    #df
+
+    
+    path=Path(integration_drive, 'MLA2','WP1 - External HBr Trials','UoG trials 1','Resist3', 'Pre Strip','12.txt')
+    f=SurfaceProfile(path, 'Example trace - pre - strip')
+    f.plot()
+# %%
+    #calculate the radius of curvature for every entry in the array
+    roc = radius_of_curvature(f.y)
+    #remove infinites
+    roc = roc[np.isfinite(roc)]
+    #find the maximum non NaN value
+    minroc = np.nanmin(roc)
+    #this is the index of the minimum value
+    arg_min_roc = roc[np.argmin(roc)]
+
+    #plot a circle whose centre is (x[argmin_roc)], f.y - minroc), and whose radius is minroc
+
+
 # %%

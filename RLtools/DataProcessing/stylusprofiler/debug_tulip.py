@@ -2,12 +2,12 @@
 import pandas as pd
 from scipy.signal import find_peaks, peak_widths
 from numpy.polynomial.polynomial import Polynomial as Poly
-from RLtools.data_processing.stylusprofiler.surfaceprofile import SurfaceProfile
+from RLtools.DataProcessing.stylusprofiler.surfaceprofile import SurfaceProfile
 from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
 import os
-from RLtools.data_processing.stylusprofiler.FilteringAndDerviation import savitzky_golay
+from RLtools.Math.FilteringAndDerviation import savitzky_golay
 from plotly.subplots import make_subplots
 
 
@@ -50,9 +50,9 @@ class CircleStructure(pd.DataFrame):
         self.split1 = CircleStructure(name1, split1)
         self.split2 = CircleStructure(name2, split2)
 
-    def df_find_peaks(self, h=0.5, d=150, f=None, x_resolution=1, verbose=False):
+    def df_find_peaks(self, h=0.5, d=150, width=10, f=None, x_resolution=1, verbose=False):
         
-        ind, ph = find_peaks(self[prof].values, height = h, distance=d, width=10)
+        ind, ph = find_peaks(self[prof].values, height = h, distance=d, width=width)
         if verbose:
             print(f'Found {len(ind)} peaks')
 
